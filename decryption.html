@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Decrypt Answers</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sjcl/1.0.8/sjcl.min.js"></script> 
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">  
+    <h1>Decrypt Answers</h1>
+    <input type="file" id="encrypted-file" accept=".json">
+    <label for="decryption-key">Decryption Key:</label>
+    <input type="text" id="decryption-key">
+    <button onclick="decryptAnswers()">Decrypt</button>
+
+    <div id="decrypted-content"></div>
+
+    <script>
+      function decryptAnswers() {
+        const fileInput = document.getElementById('encrypted-file');
+        const keyInput = document.getElementById('decryption-key');
+        const file = fileInput.files[0];
+
+        if (file && keyInput.value) {
+          const reader = new FileReader();
+          reader.onload = function(e) {
+            try {
+              const data = JSON.parse(e.target.result);
+              const encryptedAnswers = data.encryptedAnswers;
+              const decryptionKey = sjcl.codec.base64.toBits(keyInput.value); 
+
+              const decryptedAnswers = sjcl.decrypt(decryptionKey, encryptedAnswers);
+              const answersObj = JSON.parse(decryptedAnswers); // Parse the decrypted JSON
+
+              // Format the answers (you can customize this)
+              let formattedAnswers = "<h2>Decrypted Answers:</h2>";
+              for (const question in answersObj) {
+                formattedAnswers += `<p>${question}: ${answersObj[question]}</p>`;
+              }
+
+              document.getElementById('decrypted-content').innerHTML = formattedAnswers; 
+
+            } catch (error) {
+              alert("Error decrypting answers. Please check the file and key.");
+            }
+          };
+          reader.readAsText(file);
+        } else {
+          alert("Please select a file and enter the decryption key.");
+        }
+      }
+    </script>
+  </div>  
+</body>
+</html>

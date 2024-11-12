@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Platform - Upload Test</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Upload Test</h1>
+        <input type="file" id="upload-test" accept=".json">
+        <button onclick="uploadTest()">Upload</button>
+
+        <script>
+            function uploadTest() {
+                const fileInput = document.getElementById('upload-test');
+                const file = fileInput.files[0];
+
+                if (file) {
+                    const reader = new FileReader();
+
+                    reader.onload = function(e) {
+                        try {
+                            const test = JSON.parse(e.target.result);
+                            // Store the test data (e.g., in local storage)
+                            localStorage.setItem('uploadedTest', JSON.stringify(test)); 
+
+                            // Optionally, redirect to another page or display a success message
+                            alert("Test uploaded successfully!");
+                        } catch (error) {
+                            alert("Error parsing the uploaded file. Please ensure it is a valid JSON test file.");
+                        }
+                    };
+
+                    reader.readAsText(file);
+                } else {
+                    alert("Please select a file to upload.");
+                }
+            }
+        </script>
+    </div>
+</body>
+</html>

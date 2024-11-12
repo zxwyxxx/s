@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Platform - Complete Test</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sjcl/1.0.8/sjcl.min.js"></script> 
+</head>
+<body>
+  <div class="container">
+    <h1>Complete Test</h1>
+
+    <div>
+      <label for="test-select">Select a test:</label>
+      <select id="test-select">
+      </select>
+    </div>
+
+    <div id="test-content"></div>
+
+    <button onclick="showResults()">See Results</button>
+
+    <script>
+      // Fetch the list of tests from the server
+      function fetchTests() {
+        fetch('/tests')
+          .then(response => response.json())
+          .then(tests => {
+            const select = document.getElementById('test-select');
+            select.innerHTML = ''; 
+            tests.forEach(test => {
+              const option = document.createElement('option');
+              option.value = test;
+              option.text = test;
+              select.appendChild(option);
+
+              // Add delete button next to each test
+              const deleteButton = document.createElement('button');
+              deleteButton.textContent = 'Delete';
+              deleteButton.onclick = () => deleteTest(test);
+              select.appendChild(deleteButton); 
+            });
+          })
+          .catch(error => console.error('Error fetching tests:', error));
+      }
+
+      // Function to delete a test
+      function deleteTest(testName) {
+        fetch(`/tests/${testName}`, { method: 'DELETE' })
+          .then(response => response.text())
+          .then(data => {
+            console.log(data); 
+            fetchTests(); // Refresh the test list after deletion
+          })
+          .catch(error => console.error('Error deleting test:', error));
+      }
+
+      // Function to load the selected test
+      function loadTest() {
+        const selectedTest = document.getElementById('test-select').value;
+        fetch(`/tests/${selectedTest}`)
+          .then(response => response.json())
+          .then(test => {
+            localStorage.setItem('uploadedTest', JSON.stringify(test));
+            displayTest(); 
+          })
+          .catch(error => console.error('Error loading test:', error));
+      }
+
+      // Add an event listener to the select element
+      const testSelect = document.getElementById('test-select');
+      testSelect.addEventListener('change', loadTest);
+
+      // Retrieve the test data from local storage
+      let test = JSON.parse(localStorage.getItem('uploadedTest'));
+
+      function displayTest() {
+        test = JSON.parse(localStorage.getItem('uploadedTest')); 
+        const container = document.getElementById('test-content');
+        container.innerHTML = '';
+
+        if (test) {
+          test.questions.forEach((q, index) => {  // Access the questions array
+            const questionDiv = document.createElement('div');
+            questionDiv.classList.add('question');
+
+            const questionText = document.createElement('h3');
+            questionText.innerText = `${index + 1}. ${q.question}`;
+            questionDiv.appendChild(questionText);
+
+            q.options.forEach((option, i) => {
+              const optionLabel = document.createElement('label');
+              const optionInput = document.createElement('input');
+              optionInput.type = 'radio';
+              optionInput.name = `question-${index}`;
+              optionInput.value = i + 1; 
+
+              optionLabel.appendChild(optionInput);
+              optionLabel.appendChild(document.createTextNode(option));
+              questionDiv.appendChild(optionLabel);
+              questionDiv.appendChild(document.createElement('br'));
+            });
+
+            container.appendChild(questionDiv);
+          });
+        } else {
+          const message = document.createElement('p');
+          message.textContent = "No test data found. Please upload a test first.";
+          container.appendChild(message);
+        }
+      }
+
+      function showResults() {
+        let score = 0;
+        const answers = {};
+
+        if (test) { // Check if test data is available
+          test.questions.forEach((q, index) => {
+            const selectedAnswer = document.querySelector(`input[name="question-${index}"]:checked`);
+            if (selectedAnswer) {
+              answers[`question-${index}`] = parseInt(selectedAnswer.value);
+              if (parseInt(selectedAnswer.value) === q.answer) {
+                score++;
+              }
+            }
+          });
+
+          const encryptionKey = sjcl.random.randomWords(8);
+          const encryptedAnswers = sjcl.encrypt(encryptionKey, JSON.stringify(answers));
+          downloadEncryptedData(encryptedAnswers, encryptionKey);
+
+          const resultsDiv = document.createElement('div');
+          resultsDiv.innerHTML = `<h2>Results</h2><p>You scored ${score} out of ${test.questions.length}.</p>`; 
+          document.getElementById('test-content').appendChild(resultsDiv);
+        } else {
+          alert("No test data found. Please select a test first.");
+        }
+      }
+
+      function downloadEncryptedData(encryptedAnswers, encryptionKey) {
+        const answersJson = JSON.stringify({
+          encryptedAnswers: encryptedAnswers,
+          key: sjcl.codec.base64.fromBits(encryptionKey)
+        });
+        const link = document.createElement('a');
+        link.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(answersJson);
+        link.download = 'encrypted_answers.json';
+        alert("Your decryption key is: " + sjcl.codec.base64.fromBits(encryptionKey));
+        link.click();
+      }
+
+      // Call fetchTests() when the page loads
+      fetchTests();
+    </script>
+  </div>
+</body>
+</html>
